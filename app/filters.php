@@ -13,8 +13,7 @@
 
 App::before(function($request)
 {
-    //Log::info($request->path());
-    //Log::info($request->segment(1));
+    Log::info("Board: ".print_r(Session::get('board'), true));
     //Log::info(": ".($request->ajax())?'yes':'no');
 });
 

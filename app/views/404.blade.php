@@ -8,7 +8,7 @@
             <div class="header">
                 @include('layouts.header')
             </div>
-            <div class="content" style="padding: 340px 0px 0px 0px;">
+            <div class="content" style="">
                     <h2 style="text-align: center; font-size: 38px; line-height: 100px;">404 page not found.</h2>
                     <img src="/images/tbservers.png" alt="404 page not found"/>
             </div>
