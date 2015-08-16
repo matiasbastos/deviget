@@ -11,3 +11,4 @@
 |
 */
 Route::any('/', 'ConnectFourController@new_game');
+Route::get('/games/{player}', 'ConnectFourController@board')->where('player', '[1-2]');
