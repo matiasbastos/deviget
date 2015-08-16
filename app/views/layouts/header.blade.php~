@@ -1,0 +1,120 @@
+<?php
+    if(isset($region_id)) Log::info($region_id);
+    if(isset($exp_id)) Log::info($exp_id);
+    $headerImage = null;
+    if(isset($region_id) && isset($exp_id)) {
+        $q = "  select pth_header_images.title, pth_header_images.img
+                from pth_header_images left join pth_header_images_experiences on pth_header_images.`id` = pth_header_images_experiences.`image_id`
+                where pth_header_images.region_id = $region_id and (pth_header_images_experiences.`experience_id` = $exp_id or pth_header_images.all_exp = 1)
+                order by rand()
+                limit 1";
+        $headerImage = DB::select($q);
+    }elseif(isset($country_code) && isset($exp_id)) {
+        $q = "  select pth_header_images.title, pth_header_images.img
+                from pth_header_images inner join pth_header_images_experiences on pth_header_images.`id` = pth_header_images_experiences.`image_id`
+                where pth_header_images.region_id IN (select RegionKey from pd_regionmaster where CountryCode = '$country_code') and pth_header_images_experiences.`experience_id` = $exp_id
+                order by rand()
+                limit 1";
+        $headerImage = DB::select($q);
+    }
+    //if((!$headerImage||count($headerImage)==0) && isset($region_id)) $headerImage = HeaderImage::whereRaw("region_id = $region_id")->orderBy(DB::raw('RAND()'))->take(1)->get();
+    if((!$headerImage||count($headerImage)==0) && isset($exp_id)) {
+        $q = "  select pth_header_images.title, pth_header_images.img
+                from pth_header_images inner join pth_header_images_experiences on pth_header_images.`id` = pth_header_images_experiences.`image_id`
+                where IFNULL(pth_header_images.region_id, 0) = 0 and pth_header_images_experiences.`experience_id` = $exp_id
+                order by rand()
+                limit 1";
+        $headerImage = DB::select($q);
+    }
+    if(!$headerImage || count($headerImage)==0 && Request::path()=="/") $headerImage = HeaderImage::whereRaw("home_image = 1")->orderBy(DB::raw('RAND()'))->take(1)->get();
+    if(!$headerImage||count($headerImage)==0) $headerImage = HeaderImage::whereRaw("IFNULL(region_id, 0) = 0")->orderBy(DB::raw('RAND()'))->take(1)->get();
+    $destinations_exp = unserialize(Cache::remember('destinations_exp', 1, function(){
+        $d_exp = array();
+        $experiences = Experience::whereExists(function($query){$query->select(DB::raw(1))
+                                                                      ->from('pd_regionmaster')
+                                                                      ->whereRaw("pd_regionmaster.experiences LIKE CONCAT('%',pth_experiences.page,'%')");})
+                                                                      ->get();
+        foreach($experiences as $exp) $d_exp[$exp->title] = Region::where('experiences','like','%'.$exp->page.'%')->orderBy('CountryCode')->get();
+        return serialize($d_exp);
+    }));
+    
+?>
+<div class="header-top">
+    <div class="pull-left"><h1>Planet Travel</h1></div>
+    <div class="pull-right">
+        <span class="addressHeader">PHONE +44(0) 1273 921 001 info@planettravelholidays.com ADDRESS 1st Floor Marine House, 130 Albion Street, Southwick, BN42 4DP, UK</span>
+        <div id="menu"><!-- Menu starts here -->
+            <ul class="menu"><!-- List starts here -->
+                <li><a href="/">HOME</a></li>
+                <li class="has-dropdown"><a href="#">DESTINATIONS</a>
+                    <div class="dropdown dropdown-{{count($destinations_exp)}}columns dropdown-column" id="destinations-menu">
+                        @foreach($destinations_exp as $exp=>$dest)
+                            <?php $x = Experience::where('title', $exp)->get(); ?>
+                            <div class="col-1">
+                                <h3>{{$exp}}</h3>
+                                <?php $dest_countries = array(); ?>
+                                @foreach($dest as $d)
+                                    <?php if(!in_array($d->country->countryName, $dest_countries)): ?>
+                                        <a class="strong" href="/{{$x[0]->page}}/country/{{strtolower(str_replace(" ","-",$d->country->countryName))}}/{{strtolower($d->country->countryCode)}}">
+                                            <h4>{{$d->country->countryName}}</h4>
+                                        </a>
+                                    <?php $dest_countries[] = $d->country->countryName; endif; ?>
+                                    <a class="strong" style="margin-left: 10px;display: block;" href="/{{$x[0]->page}}/region/{{strtolower(str_replace(" ","-",$d->country->countryName))}}/{{strtolower(str_replace(" ","-",$d->RegionName))}}">{{$d->country->countryName}}, {{$d->RegionName}}</a>
+                                @endforeach
+                            </div>
+                        @endforeach
+                    </div>
+                </li>
+                <li class="has-dropdown"><a href="#">HOLIDAY TYPES</a><!-- 5 columns starts here -->
+                    <div class="dropdown dropdown-{{count($destinations_exp)}}columns dropdown-column"><!-- Container 5 columns starts here -->
+                        @foreach($destinations_exp as $exp=>$dest)
+                            <?php $x = Experience::where('title', $exp)->get(); ?>
+                            <a href="/{{$x[0]->page}}" style="padding:0;">
+                                <div class="col-1">
+                                    <h3>{{$exp}}</h3>
+                                    <p class="strong">@if(isset($x[0]->desc)){{strip_tags($x[0]->desc)}}@endif</p>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div><!-- 5 columns ends here -->
+                </li><!-- Container 5 columns ends here -->
+                <li><a href="/offers/spa_and_wellness">OFFERS</a></li>
+                <li><a href="/contact_us">CONTACT US</a></li>
+          </ul><!-- List ends here -->
+        </div><!-- Menu ends here -->
+        <script>
+            jQuery("div#menu ul.menu li.has-dropdown").hover(
+                function () {
+                    var top = 69 - $("body").scrollTop();
+                    $(this).find("div.dropdown").css({ 'top': top+'px' });
+                    $(this).find("div.dropdown").slideToggle();
+                },
+                function () {
+                    $(this).find("div.dropdown").hide();
+                }
+            );
+            $(document).ready(function(){
+                $("#find_your_resort_lightbox").fancybox({ 'hideOnContentClick': false, 'frameWidth': 350, 'frameHeight': 308 });
+            });  
+        </script>
+    </div>
+</div>
+<div class="header-image" style="background-image: url('/uploads/headerimages/resized/{{ $headerImage[0]->img }}');"> </div>
+<div class="header-right-buttons">
+    <a href="#find-resort-div" id="find_your_resort_lightbox" style="margin-left: 5px;">
+        <div style="width: 175px; height: 34px;margin: 94px 0px 0px 104px;"></div>
+    </a>
+    <a href="#" onclick="window.open('http://www.voipfone.co.uk/callmeback.php?iframe&code=226409e4b1f0e5f3', 'Call Me Back', 'toolbar=0,scrollbars=1,location=0,statusbar=0,menubar=0,resizable=1,width=640,height=480'); return false;" id="popup_callback">
+        <div style="width: 113px; height: 32px;margin: 156px 0px 0px 68px;z-index: 1000000;display: inline-block;"></div>
+    </a>
+    <a href="#" onclick="window.open('http://livechat.boldchat.com/aid/745619105435169416/bc.chat?cbdid=738648978508595436&url=' + escape(document.location.href), 'Chat6361439582921451230', 'toolbar=0,scrollbars=1,location=0,statusbar=0,menubar=0,resizable=1,width=640,height=480');return false;">
+        <div style="width: 113px; height: 32px; margin: -31px 0px 0px 198px;display: inline-block;"></div>
+    </a>
+</div>
+<div style="clear:both;"></div>
+<div style="display:none">
+    <div id="find-resort-div">
+        @include('widgets.resort-search', array('activeMenu'=>false)) 
+    </div>
+</div>
+@yield('nav-bar', '<div class="header-main-title" style="margin-top: 119px;height: 40px;"><h1 style="margin-top: 0px;">'.$body_title.'</h1></div>')
