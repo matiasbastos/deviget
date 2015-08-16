@@ -22,6 +22,22 @@ class ConnectFourController extends BaseController {
             'player'=>$player, 
             'turn'=>'Your Turn!'
         ]);
-   }     
+    }     
+
+    public function add_disc($player, $row) {
+        try{
+            $board = Session::get('board');
+            for($l=6; $l>0; $l--){
+                if($board["l{$l}"]["r{$row}"]==0){
+                    $board["l{$l}"]["r{$row}"] = $player;
+                    Session::put('board', $board);
+                    break;
+                }
+            }
+        }catch(Exception $ex){
+            return $ex->getMessage();
+        }
+        return "ok";
+    }    
 }
 

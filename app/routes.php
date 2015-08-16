@@ -12,3 +12,4 @@
 */
 Route::any('/', 'ConnectFourController@new_game');
 Route::get('/games/{player}', 'ConnectFourController@board')->where('player', '[1-2]');
+Route::get('/add_disc/{player}/{row}', 'ConnectFourController@add_disc')->where(['player'=>'[1-2]', 'row'=>'[1-7]']);
